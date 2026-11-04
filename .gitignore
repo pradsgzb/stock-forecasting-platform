@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.pyright/
+.coverage
+coverage.xml
+htmlcov/
+.hypothesis/
+
+# Environments
+.venv/
+.env
+.env.*
+!.env.example
+
+# Builds
+dist/
+build/
+*.egg-info/
+
+# IDE and OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime data
+.local/
+data/
+artifacts/
+logs/
+
+# Generated reports
+reports/

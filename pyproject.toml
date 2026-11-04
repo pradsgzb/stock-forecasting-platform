@@ -1,0 +1,173 @@
+[build-system]
+requires = ["setuptools>=82,<83"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-forecasting-platform"
+version = "0.6.0"
+description = "Production-oriented foundation for point-in-time-correct stock forecasting research and MLOps."
+readme = "README.md"
+requires-python = ">=3.13,<3.15"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [
+  { name = "Project Maintainers" },
+]
+keywords = ["machine-learning", "finance", "forecasting", "mlops", "time-series"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+]
+dependencies = [
+  "alembic>=1.18,<2",
+  "fastapi>=0.128,<1",
+  "joblib>=1.5,<2",
+  "numpy>=2.3,<3",
+  "exchange-calendars>=4.13.1,<5",
+  "pandas>=2.2.3,<4",
+  "pydantic>=2.13.5,<3",
+  "opentelemetry-api>=1.42,<2",
+  "opentelemetry-sdk>=1.42,<2",
+  "prometheus-client>=0.25,<1",
+  "psycopg[binary]>=3.2,<4",
+  "pydantic-settings>=2.14.1,<3",
+  "PyJWT[crypto]>=2.13,<3",
+  "scikit-learn>=1.8,<2",
+  "SQLAlchemy>=2.0.50,<3",
+  "tzdata>=2025.2; sys_platform == 'win32'",
+  "uvicorn>=0.48,<1",
+]
+
+[project.scripts]
+stock-predictor = "stock_predictor.cli:main"
+
+[dependency-groups]
+dev = [
+  "bandit[toml]>=1.8,<2",
+  "debugpy>=1.8,<2",
+  "httpx>=0.28,<1",
+  "hypothesis>=6.140,<7",
+  "pip-audit>=2.9,<3",
+  "pre-commit>=4.3,<5",
+  "PyYAML>=6,<7",
+  "pyright>=1.1.414,<2",
+  "pytest>=9,<10",
+  "pytest-cov>=7,<8",
+  "ruff>=0.17.3,<1",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["stock_predictor*"]
+
+[tool.setuptools.package-data]
+stock_predictor = [
+  "py.typed",
+  "db/migrations/*.py",
+  "db/migrations/*.mako",
+  "db/migrations/versions/*.py",
+  "resources/*.json",
+]
+
+[tool.pytest.ini_options]
+addopts = [
+  "--strict-config",
+  "--strict-markers",
+  "--import-mode=importlib",
+  "--showlocals",
+  "-ra",
+]
+minversion = "9.0"
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = [
+  "contract: reusable adapter contract tests",
+  "integration: tests that exercise third-party adapters",
+  "security: authentication, authorization, and abuse-control tests",
+]
+filterwarnings = [
+  "error",
+  "ignore:.*datetime.datetime.utcnow.*:DeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["stock_predictor"]
+omit = ["src/stock_predictor/cli.py"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "@overload",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src", "tests"]
+exclude = [".venv", "dist", "build"]
+
+[tool.ruff.lint]
+select = [
+  "A", "ARG", "ASYNC", "B", "BLE", "C4", "C90", "DTZ", "E", "F", "FA",
+  "FLY", "I", "LOG", "N", "PERF", "PIE", "PL", "PT", "RET", "RUF", "S",
+  "SIM", "T10", "T20", "TC", "TID", "TRY", "UP", "W",
+]
+ignore = [
+  "PLR2004",  # Domain constants are clearer inline when the value carries meaning.
+  "S101",     # Plain assertions are appropriate in pytest.
+  "TRY003",   # Domain exceptions intentionally carry specific contextual messages.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ANN", "ARG001", "D", "PLR2004", "S101"]
+"src/stock_predictor/cli.py" = ["C901", "PLR0912", "PLR0914", "PLR0915", "T201"]
+"src/stock_predictor/reference/service.py" = ["C901", "PLR0912", "PLR0914", "PLR0915"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["stock_predictor"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 7
+max-branches = 12
+max-returns = 6
+max-statements = 50
+
+[tool.ruff.format]
+docstring-code-format = true
+line-ending = "lf"
+quote-style = "double"
+indent-style = "space"
+
+[tool.pyright]
+include = ["src", "tests"]
+exclude = [".venv", "dist", "build"]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = "none"
+reportUnknownMemberType = "warning"
+reportUnknownVariableType = "warning"
+reportUnknownArgumentType = "warning"
+reportUnnecessaryTypeIgnoreComment = "error"
+venvPath = "."
+venv = ".venv"
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "dist", ".venv"]
+skips = ["B101"]

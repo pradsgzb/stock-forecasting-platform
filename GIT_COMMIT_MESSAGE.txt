@@ -1,0 +1,12 @@
+feat(platform): complete delivery and reference operations
+
+Implement Sections 26-31 with production-oriented delivery and operations:
+
+- add locked CI, release evidence, protected promotion, and CT qualification
+- add Docker Compose, Kubernetes overlays, and GCP/Azure IaC references
+- add setup, run, debug, deployment, governance, and incident documentation
+- add a versioned learning catalog with guided extension exercises
+- add an executable end-to-end forecasting and MLOps reference scenario
+- add repository, infrastructure, package, and deployment validation
+
+Keep model promotion human-gated and live brokerage unavailable.

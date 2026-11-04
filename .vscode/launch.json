@@ -1,0 +1,58 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API: local process",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "stock_predictor.cli",
+      "args": ["serve"],
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "SP_API__JWT_VERIFICATION_KEY_PATH": "${workspaceFolder}/.local/secrets/jwt-public.pem"
+      },
+      "justMyCode": true
+    },
+    {
+      "name": "Reference scenario",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "stock_predictor.cli",
+      "args": [
+        "reference-scenario",
+        "--workspace",
+        ".local/reference-scenario-debug",
+        "--output",
+        ".local/reference-scenario-debug/report.json"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Pytest: current file",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-vv", "-s"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Attach: Docker API",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "127.0.0.1",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/app"
+        }
+      ],
+      "justMyCode": true
+    }
+  ]
+}

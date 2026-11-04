@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Bootstrap",
+      "type": "shell",
+      "command": "./scripts/bootstrap.sh",
+      "windows": {
+        "command": "./scripts/bootstrap.ps1"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Quality checks",
+      "type": "shell",
+      "command": "./scripts/check.sh",
+      "windows": {
+        "command": "./scripts/check.ps1"
+      },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Generate local credentials",
+      "type": "shell",
+      "command": "./scripts/generate-dev-credentials.sh",
+      "windows": {
+        "command": "./scripts/generate-dev-credentials.ps1"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start debug container",
+      "type": "shell",
+      "command": "docker compose --profile debug up --build api-debug",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,261 @@
+{
+  "schema_version": "1.0.0",
+  "exercises": [
+    {
+      "exercise_id": "python-domain-extension",
+      "title": "Add a strongly typed domain value",
+      "track": "python-software-engineering",
+      "difficulty": "beginner",
+      "objective": "Add a validated domain value without coupling the domain layer to a framework.",
+      "prerequisites": [],
+      "extension_points": [
+        "src/stock_predictor/domain/common/values.py",
+        "tests/unit/domain/common"
+      ],
+      "acceptance_criteria": [
+        "Reject invalid values with a domain exception.",
+        "Preserve immutability and deterministic equality.",
+        "Keep architecture-boundary tests passing."
+      ],
+      "verification_commands": [
+        "uv run --locked pytest tests/unit/domain/common tests/architecture",
+        "uv run --locked pyright"
+      ],
+      "deliverables": [
+        "Typed value object",
+        "Unit and property-based tests",
+        "Short ADR note"
+      ],
+      "expected_sessions": 3
+    },
+    {
+      "exercise_id": "market-provider-adapter",
+      "title": "Implement a market-data provider adapter",
+      "track": "data-engineering",
+      "difficulty": "intermediate",
+      "objective": "Add a provider behind the existing SDK while preserving raw payloads and declared limits.",
+      "prerequisites": [
+        "python-domain-extension"
+      ],
+      "extension_points": [
+        "src/stock_predictor/ports/market_data_provider.py",
+        "src/stock_predictor/adapters/market_data"
+      ],
+      "acceptance_criteria": [
+        "Declare capabilities before network access.",
+        "Pass the provider contract test suite.",
+        "Redact credentials and bound retries."
+      ],
+      "verification_commands": [
+        "uv run --locked pytest tests/contract tests/unit/adapters/market_data",
+        "uv run --locked bandit -q -r src -ll"
+      ],
+      "deliverables": [
+        "Provider adapter",
+        "Contract tests",
+        "Operational limitation document"
+      ],
+      "expected_sessions": 8
+    },
+    {
+      "exercise_id": "leakage-safe-feature",
+      "title": "Add a point-in-time feature",
+      "track": "time-series",
+      "difficulty": "intermediate",
+      "objective": "Create a versioned feature that cannot observe information after its decision cutoff.",
+      "prerequisites": [
+        "market-provider-adapter"
+      ],
+      "extension_points": [
+        "src/stock_predictor/application/features/calculators.py",
+        "src/stock_predictor/ports/feature_calculator.py"
+      ],
+      "acceptance_criteria": [
+        "Declare lookback and missing-value behavior.",
+        "Return exact source-bar lineage.",
+        "Include a test that injects future data and proves it is ignored."
+      ],
+      "verification_commands": [
+        "uv run --locked pytest tests/unit/application/features tests/integration/test_market_data_vertical_slice.py"
+      ],
+      "deliverables": [
+        "Feature calculator",
+        "Feature documentation",
+        "Leakage regression tests"
+      ],
+      "expected_sessions": 6
+    },
+    {
+      "exercise_id": "model-plugin",
+      "title": "Implement a model plugin",
+      "track": "machine-learning",
+      "difficulty": "intermediate",
+      "objective": "Add a model through the plugin SDK and compare it with mandatory baselines.",
+      "prerequisites": [
+        "leakage-safe-feature"
+      ],
+      "extension_points": [
+        "src/stock_predictor/ports/model_plugin.py",
+        "src/stock_predictor/application/models/registry.py"
+      ],
+      "acceptance_criteria": [
+        "Implement fit, predict, save/load health checks, and deterministic seeding.",
+        "Report performance against every mandatory baseline.",
+        "Do not inspect the final holdout during tuning."
+      ],
+      "verification_commands": [
+        "uv run --locked pytest tests/unit/adapters/models tests/integration/test_model_development_vertical_slice.py"
+      ],
+      "deliverables": [
+        "Model plugin",
+        "Model card",
+        "Comparison report"
+      ],
+      "expected_sessions": 8
+    },
+    {
+      "exercise_id": "deep-learning-candidate",
+      "title": "Add a bounded deep-learning candidate",
+      "track": "deep-learning",
+      "difficulty": "advanced",
+      "objective": "Add an optional neural candidate without weakening baseline, reproducibility, or artifact controls.",
+      "prerequisites": [
+        "model-plugin"
+      ],
+      "extension_points": [
+        "src/stock_predictor/ports/model_plugin.py",
+        "src/stock_predictor/application/training"
+      ],
+      "acceptance_criteria": [
+        "Pin random seeds and record hardware/runtime metadata.",
+        "Bound epochs, memory, and search budget.",
+        "Reject promotion when the model does not beat simple baselines."
+      ],
+      "verification_commands": [
+        "uv run --locked pytest tests/unit/application/training tests/integration/test_model_development_vertical_slice.py"
+      ],
+      "deliverables": [
+        "Optional model plugin",
+        "Resource-budget evidence",
+        "Ablation report"
+      ],
+      "expected_sessions": 14
+    },
+    {
+      "exercise_id": "transaction-cost-model",
+      "title": "Improve the execution-cost model",
+      "track": "financial-modeling",
+      "difficulty": "advanced",
+      "objective": "Add a transparent, testable liquidity-aware paper execution policy.",
+      "prerequisites": [
+        "model-plugin"
+      ],
+      "extension_points": [
+        "src/stock_predictor/ports/backtesting.py",
+        "src/stock_predictor/application/backtesting"
+      ],
+      "acceptance_criteria": [
+        "Never fill before a signal is available.",
+        "Conserve cash and positions under partial fills.",
+        "Demonstrate net results after all configured costs."
+      ],
+      "verification_commands": [
+        "uv run --locked pytest tests/unit/application/backtesting tests/integration/test_model_development_vertical_slice.py"
+      ],
+      "deliverables": [
+        "Cost-model strategy",
+        "Property-based accounting tests",
+        "Sensitivity report"
+      ],
+      "expected_sessions": 10
+    },
+    {
+      "exercise_id": "drift-policy",
+      "title": "Add a governed drift detector",
+      "track": "mlops",
+      "difficulty": "advanced",
+      "objective": "Introduce a versioned drift metric with evidence, alert thresholds, and retraining behavior.",
+      "prerequisites": [
+        "model-plugin"
+      ],
+      "extension_points": [
+        "src/stock_predictor/application/monitoring/service.py",
+        "src/stock_predictor/domain/mlops/monitoring.py"
+      ],
+      "acceptance_criteria": [
+        "Define minimum samples and warning/critical thresholds.",
+        "Persist evidence independently of an alerting vendor.",
+        "Keep human approval required for production promotion."
+      ],
+      "verification_commands": [
+        "uv run --locked pytest tests/unit/application/monitoring tests/integration/test_production_mlops_vertical_slice.py"
+      ],
+      "deliverables": [
+        "Drift metric",
+        "Threshold rationale",
+        "Monitoring tests"
+      ],
+      "expected_sessions": 8
+    },
+    {
+      "exercise_id": "cloud-deployment-module",
+      "title": "Extend a cloud deployment module",
+      "track": "cloud-devops",
+      "difficulty": "advanced",
+      "objective": "Extend one cloud reference deployment while preserving private networking and managed identity.",
+      "prerequisites": [
+        "python-domain-extension"
+      ],
+      "extension_points": [
+        "infra/terraform/gcp",
+        "infra/terraform/azure",
+        "deploy/kubernetes"
+      ],
+      "acceptance_criteria": [
+        "Store no credentials in Terraform state inputs or source code.",
+        "Expose only documented outputs.",
+        "Run formatting, validation, and infrastructure security checks."
+      ],
+      "verification_commands": [
+        "./scripts/validate-infrastructure.sh",
+        "docker compose config --quiet"
+      ],
+      "deliverables": [
+        "Infrastructure changes",
+        "Threat-model update",
+        "Rollback procedure"
+      ],
+      "expected_sessions": 12
+    },
+    {
+      "exercise_id": "research-replication",
+      "title": "Replicate and challenge a forecasting result",
+      "track": "research-methodology",
+      "difficulty": "advanced",
+      "objective": "Reproduce a result, register all trials, and test whether it survives alternate periods and costs.",
+      "prerequisites": [
+        "transaction-cost-model",
+        "drift-policy"
+      ],
+      "extension_points": [
+        "docs/governance/experiment-register-template.md",
+        "src/stock_predictor/reference"
+      ],
+      "acceptance_criteria": [
+        "Register unsuccessful as well as successful experiments.",
+        "Preserve one untouched holdout.",
+        "Report uncertainty, costs, limitations, and failed hypotheses."
+      ],
+      "verification_commands": [
+        "uv run --locked stock-predictor reference-scenario --output .local/reference-report.json",
+        "uv run --locked pytest tests/integration/test_reference_scenario.py"
+      ],
+      "deliverables": [
+        "Reproducibility package",
+        "Experiment register",
+        "Critical findings memo"
+      ],
+      "expected_sessions": 16
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+"""Market-data ingestion, quality, point-in-time, and feature domain models."""
+
+from stock_predictor.domain.market_data.contracts import (
+    BarFrequency,
+    MarketDataKind,
+    MarketDataPage,
+    PriceAdjustment,
+    PriceBarRequest,
+    ProviderCapabilities,
+    ProviderDescriptor,
+    ProviderPriceBar,
+    RecordOperation,
+)
+from stock_predictor.domain.market_data.features import (
+    FeatureDefinition,
+    FeatureInputBar,
+    FeatureObservation,
+    FeatureSet,
+    FeatureSnapshot,
+    FeatureValueType,
+    MissingValuePolicy,
+)
+from stock_predictor.domain.market_data.ingestion import (
+    IngestionCheckpoint,
+    IngestionManifest,
+    IngestionPageManifest,
+    RawObjectDescriptor,
+    Sha256Digest,
+)
+from stock_predictor.domain.market_data.point_in_time import (
+    AdjustmentFactor,
+    NormalizedPriceBar,
+    PriceBarKey,
+    PriceBarValues,
+)
+from stock_predictor.domain.market_data.quality import (
+    QualityDimension,
+    QualityFinding,
+    QualityScore,
+    ReconciliationReport,
+    RuleOutcome,
+    RuleSeverity,
+    ValidationReport,
+    ValidationStatus,
+)
+
+__all__ = [
+    "AdjustmentFactor",
+    "BarFrequency",
+    "FeatureDefinition",
+    "FeatureInputBar",
+    "FeatureObservation",
+    "FeatureSet",
+    "FeatureSnapshot",
+    "FeatureValueType",
+    "IngestionCheckpoint",
+    "IngestionManifest",
+    "IngestionPageManifest",
+    "MarketDataKind",
+    "MarketDataPage",
+    "MissingValuePolicy",
+    "NormalizedPriceBar",
+    "PriceAdjustment",
+    "PriceBarKey",
+    "PriceBarRequest",
+    "PriceBarValues",
+    "ProviderCapabilities",
+    "ProviderDescriptor",
+    "ProviderPriceBar",
+    "QualityDimension",
+    "QualityFinding",
+    "QualityScore",
+    "RawObjectDescriptor",
+    "ReconciliationReport",
+    "RecordOperation",
+    "RuleOutcome",
+    "RuleSeverity",
+    "Sha256Digest",
+    "ValidationReport",
+    "ValidationStatus",
+]

@@ -1,0 +1,209 @@
+name: stock-forecasting-platform
+
+x-app-build: &app-build
+  context: .
+  dockerfile: Dockerfile
+
+x-app-environment: &app-environment
+  SP_APP__ENVIRONMENT: local
+  SP_APP__DEBUG: "false"
+  SP_APP__LOG_LEVEL: INFO
+  SP_DATABASE__URL: >-
+    postgresql+psycopg://stock_app:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/stock_platform
+  SP_API__HOST: 0.0.0.0
+  SP_API__PORT: "8080"
+  SP_API__ALLOWED_HOSTS: '["localhost","127.0.0.1","api"]'
+  SP_API__JWT_ISSUER: https://local.identity.invalid/
+  SP_API__JWT_AUDIENCE: stock-forecasting-platform
+  SP_API__JWT_ALGORITHMS: '["RS256"]'
+  SP_API__JWT_VERIFICATION_KEY_PATH: /run/secrets/jwt-public.pem
+  SP_API__DOCS_ENABLED: "true"
+  SP_STORAGE__DATA_ROOT: /var/lib/stock-predictor
+
+x-app-volumes: &app-volumes
+  - app-data:/var/lib/stock-predictor
+  - ./.local/secrets/jwt-public.pem:/run/secrets/jwt-public.pem:ro
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17-bookworm}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: stock_platform
+      POSTGRES_USER: stock_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stock_app -d stock_platform"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  migrate:
+    image: ${APP_IMAGE:-stock-forecasting-platform:local}
+    build: *app-build
+    restart: "no"
+    environment: *app-environment
+    volumes: *app-volumes
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+    command: ["db-upgrade"]
+
+  api:
+    image: ${APP_IMAGE:-stock-forecasting-platform:local}
+    build: *app-build
+    restart: unless-stopped
+    environment: *app-environment
+    volumes: *app-volumes
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+      - monitoring
+    command: ["serve"]
+    ports:
+      - "${API_PORT:-8080}:8080"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8080/health/live', timeout=2)
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  worker:
+    image: ${APP_IMAGE:-stock-forecasting-platform:local}
+    build: *app-build
+    restart: unless-stopped
+    environment: *app-environment
+    volumes: *app-volumes
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+    command: ["worker", "--limit", "100", "--poll-seconds", "5"]
+
+  minio:
+    image: ${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z}
+    profiles: ["mlops"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - backend
+
+  mlflow:
+    image: ${MLFLOW_IMAGE:-ghcr.io/mlflow/mlflow:v3.5.1}
+    profiles: ["mlops"]
+    restart: unless-stopped
+    command:
+      - mlflow
+      - server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --backend-store-uri
+      - sqlite:////mlflow/mlflow.db
+      - --artifacts-destination
+      - /mlflow/artifacts
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    networks:
+      - backend
+
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.5.0}
+    profiles: ["observability"]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./deploy/local/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./.local/secrets/prometheus-token:/run/secrets/prometheus-token:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - monitoring
+
+  grafana:
+    image: ${GRAFANA_IMAGE:-grafana/grafana:12.1.0}
+    profiles: ["observability"]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?Set GRAFANA_ADMIN_USER in .env}
+      GF_SECURITY_ADMIN_PASSWORD: >-
+        ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/local/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/local/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
+  api-debug:
+    profiles: ["debug"]
+    build:
+      context: .
+      dockerfile: Dockerfile.debug
+    image: ${DEBUG_IMAGE:-stock-forecasting-platform:debug}
+    restart: "no"
+    environment: *app-environment
+    volumes:
+      - ./src:/app/src:ro
+      - ./.local/secrets/jwt-public.pem:/run/secrets/jwt-public.pem:ro
+      - app-data:/var/lib/stock-predictor
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${DEBUG_API_PORT:-8081}:8080"
+      - "${DEBUG_PORT:-5678}:5678"
+    networks:
+      - backend
+      - monitoring
+
+networks:
+  backend:
+    internal: true
+  monitoring: {}
+
+volumes:
+  app-data: {}
+  postgres-data: {}
+  minio-data: {}
+  mlflow-data: {}
+  prometheus-data: {}
+  grafana-data: {}

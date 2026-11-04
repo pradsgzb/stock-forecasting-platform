@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+patches:
+  - target:
+      kind: Deployment
+      name: stock-predictor-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 50m
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: stock-predictor-api
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 2
+configMapGenerator:
+  - name: stock-predictor-config
+    behavior: merge
+    literals:
+      - SP_APP__ENVIRONMENT=local
+      - SP_API__DOCS_ENABLED=true

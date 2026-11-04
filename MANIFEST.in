@@ -1,0 +1,18 @@
+include README.md LICENSE NOTICE CHANGELOG.md
+include IMPLEMENTATION_REPORT.md VERIFICATION_RESULTS.md GIT_COMMIT_MESSAGE.txt
+include compose.yaml Dockerfile Dockerfile.debug
+include .env.example
+recursive-include src/stock_predictor/resources *.json
+recursive-include src/stock_predictor/db/migrations *.py *.mako
+recursive-include docs *.md
+recursive-include deploy *.yaml *.yml *.json
+recursive-include infra *.tf *.md
+recursive-include labs *.md
+recursive-include scripts *.py *.sh *.ps1
+recursive-include .github *.yml *.md
+recursive-include .vscode *.json
+prune .local
+prune .git
+prune .venv
+prune build
+prune dist

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stock-predictor-config
+  namespace: stock-forecasting
+data:
+  SP_APP__ENVIRONMENT: integration
+  SP_APP__DEBUG: "false"
+  SP_APP__LOG_LEVEL: INFO
+  SP_API__HOST: 0.0.0.0
+  SP_API__PORT: "8080"
+  SP_API__ALLOWED_HOSTS: '["stock-predictor","stock-predictor.stock-forecasting.svc"]'
+  SP_API__DOCS_ENABLED: "false"
+  SP_API__JWT_ALGORITHMS: '["RS256"]'
+  SP_API__JWT_VERIFICATION_KEY_PATH: /run/secrets/identity/jwt-public.pem
+  SP_STORAGE__DATA_ROOT: /var/lib/stock-predictor
+  SP_MODELING__BACKTESTING_ONLY: "true"
+  SP_FEATURES__ENABLE_FUTURE_LIVE_TRADING: "false"
+  SP_CONTINUOUS_TRAINING__ALLOW_AUTOMATIC_PROMOTION: "false"

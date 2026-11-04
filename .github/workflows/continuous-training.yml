@@ -1,0 +1,67 @@
+name: Continuous Training Qualification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 2 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: continuous-training-qualification
+  cancel-in-progress: false
+
+env:
+  UV_VERSION: "0.13.5"
+
+jobs:
+  qualify:
+    name: Exercise controlled learning loop
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --locked --all-groups
+
+      - name: Run deterministic end-to-end learning loop
+        run: >-
+          uv run --locked stock-predictor reference-scenario
+          --workspace .local/reference-scenario
+          --output .local/reference-scenario/report.json
+
+      - name: Verify controlled-promotion evidence
+        run: |
+          uv run --locked python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path(".local/reference-scenario/report.json").read_text())
+          assert report["paper_trading_only"] is True
+          assert report["challenger_promoted"] is True
+          assert report["prediction_count"] >= 1
+          assert report["outcome_count"] >= 1
+          assert report["rollback_model_version_id"] == report["final_champion_model_version_id"]
+          PY
+
+      - name: Upload qualification evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: continuous-training-qualification-${{ github.run_id }}
+          path: .local/reference-scenario/report.json
+          if-no-files-found: error
+          retention-days: 30

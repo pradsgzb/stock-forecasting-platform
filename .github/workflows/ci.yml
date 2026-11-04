@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.13.5"
+
+jobs:
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Resolve and install dependencies
+        run: uv sync --locked --all-groups
+
+      - name: Verify formatting
+        run: uv run --locked ruff format --check src tests
+
+      - name: Lint
+        run: uv run --locked ruff check src tests
+
+      - name: Strict type checking
+        run: uv run --locked pyright
+
+      - name: Python security lint
+        run: uv run --locked bandit -q -r src -ll
+
+      - name: Prepare evidence directory
+        run: mkdir -p .local
+
+      - name: Test with branch coverage
+        run: >-
+          uv run --locked pytest
+          --cov=stock_predictor
+          --cov-report=term-missing
+          --cov-report=xml
+          --junitxml=.local/test-results.xml
+
+      - name: Validate repository and deployment references
+        run: uv run --locked python scripts/validate-repository.py
+
+      - name: Run deterministic reference scenario
+        run: >-
+          uv run --locked stock-predictor reference-scenario
+          --workspace .local/reference-scenario-ci
+          --output .local/reference-scenario-ci/report.json
+
+      - name: Build distributions
+        run: uv build --locked
+
+      - name: Upload test and scenario evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quality-evidence-${{ github.run_id }}
+          path: |
+            .local/test-results.xml
+            .local/reference-scenario-ci/report.json
+            coverage.xml
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Audit dependencies
+        run: |
+          mkdir -p .local
+          uv export --locked --all-groups --no-hashes --output-file .local/audit-requirements.txt
+          uv run --locked pip-audit --requirement .local/audit-requirements.txt
+
+  compatibility:
+    name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.13", "3.14"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --all-groups --python ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: uv run --locked --python ${{ matrix.python-version }} pytest
