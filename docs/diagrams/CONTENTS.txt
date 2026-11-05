@@ -1,0 +1,14 @@
+GuruTech Visual Guides
+
+01 - What We Are Trying to Achieve
+02 - Architecture Overview
+03 - AI Data / Workflow
+04 - AI Data Pipeline
+05 - Future Developments
+06 - Student Guide 1: Big Picture
+07 - Student Guide 2: Core Concepts
+08 - Student Guide 3: How a Job Runs
+09 - Student Guide 4: Files, Folders, and State
+10 - Student Guide 5: Best Practices
+
+All images are portrait A4-ratio PNG files designed as a consistent visual series.
